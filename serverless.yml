@@ -1,0 +1,131 @@
+service: php-serverless
+frameworkVersion: '3'
+provider:
+  name: aws
+  region: eu-west-1
+  runtime: provided.al2
+  memorySize: 512
+  apiGateway:
+    binaryMediaTypes:
+      - '*/*'
+    apiKeys:
+      - xApiKey
+    usagePlan:
+      quota:
+        limit: 1000
+        offset: 0
+        period: DAY
+      throttle:
+        burstLimit: 200
+        rateLimit: 100
+  environment:
+    BREF_BINARY_RESPONSES: '1'
+
+plugins:
+  - serverless-iam-roles-per-function
+
+layers:
+  php:
+    path: runtime
+
+package:    	
+  individually: true
+  exclude:
+    - 'node_modules/**'
+    - 'vendor/**'
+    - 'src/**'
+    - 'tests/**'
+    - '*.json'
+    - '*.md'
+
+functions:
+  hello:
+    handler: hello.handler
+    layers:
+      - { Ref: PhpLambdaLayer }
+      - arn:aws:lambda:eu-west-1:601092486079:layer:php-example-vendor:11
+    events:
+      - http:
+          path: hello
+          method: post
+          private: true
+    package:
+      patterns:
+        - 'src/shared.php'
+        - 'src/hello.php'
+  detect-labels:
+    handler: rekognition.detectLabels
+    iamRoleStatementsName: allowed-detect-labels
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - rekognition:DetectLabels
+        Resource: "*"
+    layers:
+      - { Ref: PhpLambdaLayer }
+      - arn:aws:lambda:eu-west-1:601092486079:layer:php-example-vendor:11
+    events:
+      - http:
+          path: detect-labels
+          method: post	
+          private: true
+    package:
+      patterns:
+        - 'src/shared.php'
+        - 'src/functions.php'
+        - 'src/rekognition.php'
+  detect-moderation-labels:
+    handler: rekognition.detectModerationLabels
+    iamRoleStatementsName: allowed-detect-moderation-labels
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - rekognition:DetectModerationLabels
+        Resource: "*"
+    layers:
+      - { Ref: PhpLambdaLayer }
+      - arn:aws:lambda:eu-west-1:601092486079:layer:php-example-vendor:11
+    events:
+      - http:
+          path: detect-moderation-labels
+          method: post	
+          private: true
+    package:
+      patterns:
+        - 'src/shared.php'
+        - 'src/functions.php'
+        - 'src/rekognition.php'
+  detect-sentiment:
+    handler: comprehend.detectSentiment
+    iamRoleStatementsName: allowed-detect-Sentiment
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - comprehend:BatchDetectSentiment
+        Resource: "*"
+    layers:
+      - { Ref: PhpLambdaLayer }
+      - arn:aws:lambda:eu-west-1:601092486079:layer:php-example-vendor:11
+    events:
+      - http:
+          path: detect-sentiment
+          method: post	
+          private: true
+    package:
+      patterns:
+        - 'src/shared.php'
+        - 'src/comprehend.php'
+  # goodbye:
+  #   handler: goodbye.run
+  #   layers:
+  #     - arn:aws:lambda:eu-west-1:601092486079:layer:php-example-runtime:10
+  #     - arn:aws:lambda:eu-west-1:601092486079:layer:php-example-vendor:10
+  #   events:
+  #     - http:
+  #         path: goodbye
+  #         method: get
+  #         private: true
+  #   package:
+  #     patterns:
+  #       - 'src/shared.php'
+  #       - 'src/goodbye.php'
